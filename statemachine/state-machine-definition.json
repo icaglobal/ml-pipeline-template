@@ -1,0 +1,63 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "[ENTER_START_STATE]", 
+  "States": {
+    "[ENTER_START_STATE]": {
+      "Type": "Task",
+      "Resource": "arn:aws-us-gov:states:::sagemaker:createProcessingJob.sync",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "SageMaker.AmazonSageMakerException"
+          ],
+          
+          "BackoffRate": 2,
+          "IntervalSeconds": 20,
+          "MaxAttempts": 3,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Parameters": {
+        "AppSpecification": {
+          "ImageUri.$": "$.IMAGE",
+          "ContainerEntrypoint": [
+            "./main.py"
+          ]
+        },
+        "Environment": {
+          "ENV_NAME.$": "$.ENV_NAME",
+          "AWS_DEFAULT_REGION.$": "$.REGION"
+        },
+        "ProcessingResources": {
+          "ClusterConfig": {
+            "InstanceCount": 1,
+            "InstanceType.$": "$.INSTANCE",
+            "VolumeSizeInGB": 10
+          }
+        },
+        "StoppingCondition": {
+          "MaxRuntimeInSeconds": 64800
+        },
+        "RoleArn.$": "$.EXECUTION_ROLE_ARN",
+        "ProcessingJobName.$": "$.[ENTER_PROCESSING_JOB_NAME]"
+      },
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errorInfo",
+          "Next": "Failure"
+        }
+      ],
+      "ResultPath": null,
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Succeed"
+    },
+    "Failure": {
+      "Type": "Fail"
+    }
+  }
+}
